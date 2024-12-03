@@ -2,54 +2,92 @@ import sys
 import os
 import zlib
 import hashlib
+import struct
 
-def read_blob(blob_sha):
-    # Previous read_blob implementation remains the same
-    obj_dir = blob_sha[:2]
-    obj_file = blob_sha[2:]
+def read_git_object(obj_sha):
+    """Read and decompress a git object"""
+    obj_dir = obj_sha[:2]
+    obj_file = obj_sha[2:]
     obj_path = os.path.join(".git", "objects", obj_dir, obj_file)
     
     with open(obj_path, "rb") as f:
         compressed_data = f.read()
-    decompressed_data = zlib.decompress(compressed_data)
-    
-    header_end = decompressed_data.find(b'\0')
-    header = decompressed_data[:header_end].decode('utf-8')
-    
-    header_parts = header.split()
-    if header_parts[0] != "blob":
-        raise RuntimeError(f"Not a blob object: {header_parts[0]}")
-    
-    content = decompressed_data[header_end + 1:]
-    return content
+    return zlib.decompress(compressed_data)
 
-def hash_object(file_path, write=False):
-    # Read the content of the file
-    with open(file_path, 'rb') as f:
-        content = f.read()
+def parse_tree(tree_data):
+    """Parse a tree object's content and return its entries"""
+    entries = []
+    i = 0
     
-    # Create the blob header
-    header = f"blob {len(content)}".encode()
-    store_data = header + b'\0' + content
+    # Skip the header (find null byte)
+    null_pos = tree_data.find(b'\0')
+    if null_pos == -1:
+        raise RuntimeError("Invalid tree object: no null byte found")
     
-    # Calculate SHA-1 hash
-    sha1 = hashlib.sha1(store_data).hexdigest()
+    # Start parsing entries after the header
+    i = null_pos + 1
     
-    if write:
-        # Create object directory if it doesn't exist
-        obj_dir = os.path.join(".git", "objects", sha1[:2])
-        if not os.path.exists(obj_dir):
-            os.makedirs(obj_dir)
+    while i < len(tree_data):
+        # Find the space that separates mode from name
+        space_pos = tree_data.find(b' ', i)
+        if space_pos == -1:
+            break
             
-        # Write compressed object
-        obj_path = os.path.join(obj_dir, sha1[2:])
-        compressed_data = zlib.compress(store_data)
-        with open(obj_path, 'wb') as f:
-            f.write(compressed_data)
+        # Extract mode
+        mode = tree_data[i:space_pos].decode('ascii')
+        
+        # Find null byte that separates name from SHA
+        null_pos = tree_data.find(b'\0', space_pos + 1)
+        if null_pos == -1:
+            break
+            
+        # Extract name
+        name = tree_data[space_pos + 1:null_pos].decode('utf-8')
+        
+        # Extract SHA (20 bytes)
+        sha = tree_data[null_pos + 1:null_pos + 21].hex()
+        
+        # Determine type based on mode
+        obj_type = "tree" if mode == "40000" else "blob"
+        
+        entries.append({
+            'mode': mode,
+            'type': obj_type,
+            'sha': sha,
+            'name': name
+        })
+        
+        # Move to next entry
+        i = null_pos + 21
     
-    return sha1
+    # Sort entries by name
+    entries.sort(key=lambda x: x['name'])
+    return entries
+
+def ls_tree(tree_sha, name_only=False):
+    """List the contents of a tree object"""
+    try:
+        tree_data = read_git_object(tree_sha)
+        entries = parse_tree(tree_data)
+        
+        if name_only:
+            # Print only the names
+            for entry in entries:
+                print(entry['name'])
+        else:
+            # Print full format
+            for entry in entries:
+                # Format mode to ensure 6 digits with leading zeros
+                mode = entry['mode'].zfill(6)
+                print(f"{mode} {entry['type']} {entry['sha']}\t{entry['name']}")
+                
+    except FileNotFoundError:
+        raise RuntimeError(f"Not a valid object name {tree_sha}")
 
 def main():
+    if len(sys.argv) < 2:
+        raise RuntimeError("Missing command")
+        
     command = sys.argv[1]
     
     if command == "init":
@@ -71,7 +109,6 @@ def main():
         write_flag = False
         file_path = ""
         
-        # Parse arguments
         if len(sys.argv) < 3:
             raise RuntimeError("Missing file path")
         
@@ -83,9 +120,25 @@ def main():
         else:
             file_path = sys.argv[2]
         
-        # Compute hash and optionally write object
         sha1 = hash_object(file_path, write_flag)
         print(sha1)
+        
+    elif command == "ls-tree":
+        name_only = False
+        tree_sha = ""
+        
+        if len(sys.argv) < 3:
+            raise RuntimeError("Missing tree SHA")
+            
+        if sys.argv[2] == "--name-only":
+            name_only = True
+            if len(sys.argv) < 4:
+                raise RuntimeError("Missing tree SHA")
+            tree_sha = sys.argv[3]
+        else:
+            tree_sha = sys.argv[2]
+            
+        ls_tree(tree_sha, name_only)
         
     else:
         raise RuntimeError(f"Unknown command {command}")
