@@ -1,59 +1,99 @@
-[![progress-banner](https://backend.codecrafters.io/progress/git/72e59d78-3fa0-4ed3-b9d4-1469bf9f869e)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Minimal Git Implementation
 
-This is a starting point for Python solutions to the
-["Build Your Own Git" Challenge](https://codecrafters.io/challenges/git).
+This Python program implements basic Git functionalities to explore Git objects, trees, and repositories. It provides commands for initializing a Git directory, listing tree contents, hashing objects, and more.
 
-In this challenge, you'll build a small Git implementation that's capable of
-initializing a repository, creating commits and cloning a public repository.
-Along the way we'll learn about the `.git` directory, Git objects (blobs,
-commits, trees etc.), Git's transfer protocols and more.
+---
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+## Features
 
-# Passing the first stage
+- **Initialize a Git Repository**: Set up a minimal `.git` directory structure.
+- **Hash a File**: Compute and optionally write the hash of a file in Git's object storage.
+- **Inspect Git Objects**: Read and display the content of a blob or tree object.
+- **List Tree Contents**: Show the entries in a tree object.
 
-The entry point for your Git implementation is in `app/main.py`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+---
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
-```
+## Commands and Usage
 
-That's all!
+### 1. **Initialize a Repository**
+   ```bash
+   python script.py init
+   ```
+   Creates a minimal `.git` directory structure:
+   - `.git/objects`
+   - `.git/refs`
+   - `.git/HEAD` pointing to `refs/heads/main`.
 
-# Stage 2 & beyond
+### 2. **Hash a File**
+   ```bash
+   python script.py hash-object [-w] <file_path>
+   ```
+   - Compute the SHA-1 hash of the file's content.
+   - Optionally write the file into the `.git/objects` directory with the `-w` flag.
 
-Note: This section is for stages 2 and beyond.
+   **Examples**:
+   - Compute hash only:
+     ```bash
+     python script.py hash-object file.txt
+     ```
+   - Compute hash and write:
+     ```bash
+     python script.py hash-object -w file.txt
+     ```
 
-1. Ensure you have `python` installed locally
-1. Run `./your_program.sh` to run your Git implementation, which is implemented
-   in `app/main.py`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+### 3. **Inspect an Object**
+   ```bash
+   python script.py cat-file -p <object_sha>
+   ```
+   - Display the content of a Git object (blob, tree, etc.).
+   - The object is identified by its SHA.
 
-# Testing locally
+### 4. **List Tree Contents**
+   ```bash
+   python script.py ls-tree [--name-only] <tree_sha>
+   ```
+   - List the contents of a tree object.
+   - The `--name-only` flag lists only entry names without additional details.
 
-The `your_program.sh` script is expected to operate on the `.git` folder inside
-the current working directory. If you're running this inside the root of this
-repository, you might end up accidentally damaging your repository's `.git`
-folder.
+   **Examples**:
+   - Full details:
+     ```bash
+     python script.py ls-tree <tree_sha>
+     ```
+   - Names only:
+     ```bash
+     python script.py ls-tree --name-only <tree_sha>
+     ```
 
-We suggest executing `your_program.sh` in a different folder when testing
-locally. For example:
+---
 
-```sh
-mkdir -p /tmp/testing && cd /tmp/testing
-/path/to/your/repo/your_program.sh init
-```
+## Requirements
 
-To make this easier to type out, you could add a
-[shell alias](https://shapeshed.com/unix-alias/):
+- Python 3.x
 
-```sh
-alias mygit=/path/to/your/repo/your_program.sh
+---
 
-mkdir -p /tmp/testing && cd /tmp/testing
-mygit init
-```
+## Notes
+
+- The program assumes a Git-like `.git` directory structure for file-based operations.
+- Make sure you have a valid `.git` directory in the working directory for commands that interact with objects.
+
+---
+
+## Limitations
+
+This implementation is a simplified version of Git and supports only core features:
+- It does not handle branches, commits, or advanced Git concepts.
+- The program operates on objects and trees manually, without the full Git plumbing.
+
+---
+
+## License
+
+This project is open-source and available for educational purposes. Modify and adapt as needed!
+
+---
+
+## Author
+
+Created by [Hanafe Mira].
