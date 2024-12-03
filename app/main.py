@@ -83,6 +83,32 @@ def ls_tree(tree_sha, name_only=False):
                 
     except FileNotFoundError:
         raise RuntimeError(f"Not a valid object name {tree_sha}")
+
+def hash_object(file_path, write=False):
+    # Read the content of the file
+    with open(file_path, 'rb') as f:
+        content = f.read()
+    
+    # Create the blob header
+    header = f"blob {len(content)}".encode()
+    store_data = header + b'\0' + content
+    
+    # Calculate SHA-1 hash
+    sha1 = hashlib.sha1(store_data).hexdigest()
+    
+    if write:
+        # Create object directory if it doesn't exist
+        obj_dir = os.path.join(".git", "objects", sha1[:2])
+        if not os.path.exists(obj_dir):
+            os.makedirs(obj_dir)
+            
+        # Write compressed object
+        obj_path = os.path.join(obj_dir, sha1[2:])
+        compressed_data = zlib.compress(store_data)
+        with open(obj_path, 'wb') as f:
+            f.write(compressed_data)
+    
+    return sha1
     
 def read_blob(blob_sha):
     # Construct path to blob object
